@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Machine Fault Detection Using Vibration Signal Analysis</title>
+<meta name="description" content="Interactive Signals and Systems mini project: choose a machine condition and fault type, simulate the vibration signal, and see the FFT, energy, power and RMS.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f7fa;--ink:#14213d;--muted:#51607a;--line:#c9d6e2;--ok:#1b998b;--bad:#d1345b;--panel:#fff}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.65 "IBM Plex Sans",system-ui,sans-serif}
+h1,h2,h3{font-family:"Bricolage Grotesque","Segoe UI",sans-serif;line-height:1.1;margin:0}
+a{color:var(--ink)}
+:focus-visible{outline:3px solid var(--bad);outline-offset:3px}
+.wrap{max-width:960px;margin:0 auto;padding:0 24px}
+nav{display:flex;gap:24px;flex-wrap:wrap;padding:20px 0;font-weight:500}
+nav a{text-decoration:none;color:var(--muted)}nav a:hover{color:var(--ink)}
+.hero{padding:32px 0 8px}
+.hero h1{font-size:clamp(2.2rem,6vw,3.8rem);font-weight:800;max-width:15em}
+.hero p{max-width:38em;color:var(--muted);font-size:1.1rem;margin:18px 0 0}
+section{padding:52px 0 8px}
+h2{font-size:2rem;font-weight:800;margin-bottom:16px}
+p{margin:0 0 14px;max-width:44em}
+.demo{background:var(--panel);border:2px solid var(--ink);padding:20px;margin-top:8px}
+.step{font-weight:500;margin:18px 0 8px}.step:first-child{margin-top:0}
+.tabs{display:flex;gap:10px;flex-wrap:wrap}
+.tabs button{font:500 1rem "IBM Plex Sans",sans-serif;padding:10px 20px;border:2px solid var(--ink);background:#fff;color:var(--ink);cursor:pointer}
+.tabs button[aria-pressed=true]{background:var(--ink);color:#fff}
+#bh[aria-pressed=true]{background:var(--ok);border-color:var(--ok)}
+#bf[aria-pressed=true]{background:var(--bad);border-color:var(--bad)}
+.go{margin-top:22px;font:600 1.1rem "Bricolage Grotesque",sans-serif;padding:12px 32px;border:0;background:var(--bad);color:#fff;cursor:pointer}
+.go:disabled{background:var(--line);color:var(--muted);cursor:not-allowed}
+.hint{font-size:.9rem;color:var(--muted);margin:8px 0 0}
+#head{font:800 1.5rem "Bricolage Grotesque",sans-serif;margin:28px 0 4px}
+.eq{font:15px/1.5 ui-monospace,Consolas,monospace;background:var(--bg);padding:10px 14px;margin:12px 0;overflow-x:auto;max-width:none}
+.plots{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.plots figure{margin:0}
+.plots figcaption{font-size:.9rem;color:var(--muted);margin-bottom:4px}
+canvas{width:100%;height:240px;display:block;border:1px solid var(--line)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-top:16px}
+.card{background:var(--bg);border-left:5px solid var(--ink);padding:12px 16px}
+.card b{display:block;font:800 1.7rem "Bricolage Grotesque",sans-serif}
+.card small{color:var(--muted)}
+.verdict{margin-top:16px;padding:12px 16px;font-weight:500;border-left:6px solid var(--ok);background:#e6f6f3}
+.verdict.bad{border-left-color:var(--bad);background:#fbe9ee}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 0}
+.flow span{background:var(--ink);color:#fff;padding:8px 14px;font-weight:500;font-size:.95rem}
+.flow i{font-style:normal;color:var(--muted)}
+.tablewrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;min-width:700px}
+th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--line)}
+th{font-family:"Bricolage Grotesque",sans-serif;font-weight:600}
+.row{display:flex;gap:20px;flex-wrap:wrap;align-items:center;margin:0 0 12px}.row .lbl{font-size:.9rem;color:var(--muted);align-self:center}
+.chartwrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);padding:12px;margin:0 0 16px}.chartwrap canvas{min-width:480px;height:280px;border:0}
+.ok{color:var(--ok);font-weight:500}.bad{color:var(--bad);font-weight:500}
+.btn{display:inline-block;background:var(--ink);color:#fff;padding:10px 18px;text-decoration:none;font-weight:500}
+.btn:hover{background:var(--bad)}
+footer{margin-top:64px;padding:28px 0;border-top:2px solid var(--ink);color:var(--muted);font-size:.95rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav aria-label="Main">
+  <a href="#demo">Simulator</a><a href="#objective">Objective</a><a href="#method">Method</a><a href="#results">Results</a><a href="#code">Code</a>
+</nav>
+
+<header class="hero">
+  <h1>Machine fault detection using vibration signals</h1>
+  <p>A Signals and Systems mini project. Choose a machine condition and a fault type, press Simulate, and the browser generates the vibration signal, plots its waveform and Fourier spectrum, and calculates energy, power and RMS.</p>
+</header>
+
+<section id="demo">
+  <h2>Simulator</h2>
+  <div class="demo">
+    <p class="step">Step 1. Choose the machine condition</p>
+    <div class="tabs" role="group" aria-label="Machine condition">
+      <button id="bh" data-g="c" data-v="h" aria-pressed="false">Healthy machine</button>
+      <button id="bf" data-g="c" data-v="f" aria-pressed="false">Faulty machine</button>
+    </div>
+    <div id="fopt" hidden>
+      <p class="step">Step 2. Choose the type of fault</p>
+      <div class="tabs" role="group" aria-label="Fault type">
+        <button data-g="k" data-v="imb" id="k_imb" aria-pressed="false">Unbalance</button>
+        <button data-g="k" data-v="mis" id="k_mis" aria-pressed="false">Misalignment</button>
+        <button data-g="k" data-v="bea" id="k_bea" aria-pressed="false">Bearing defect</button>
+        <button data-g="k" data-v="loo" id="k_loo" aria-pressed="false">Mechanical looseness</button>
+      </div>
+      <p class="step">Severity</p>
+      <div class="tabs" role="group" aria-label="Severity">
+        <button data-g="s" data-v="m" id="v_m" aria-pressed="false">Mild</button>
+        <button data-g="s" data-v="o" id="v_o" aria-pressed="true">Moderate</button>
+        <button data-g="s" data-v="s" id="v_s" aria-pressed="false">Severe</button>
+      </div>
+    </div>
+    <button class="go" id="go" disabled>Simulate</button>
+    <p class="hint" id="pr">Pick a machine condition (and a fault type if faulty), then press Simulate. After that, any change you make updates the plots automatically.</p>
+
+    <div id="out" hidden>
+      <div id="head"></div>
+      <p id="sig"></p>
+      <div class="eq" id="eq"></div>
+      <div class="plots">
+        <figure><figcaption>Time domain (first 0.2 s)</figcaption><canvas id="ct" aria-label="Time domain plot"></canvas></figure>
+        <figure><figcaption>FFT magnitude spectrum (0 to 250 Hz)</figcaption><canvas id="cf" aria-label="Magnitude spectrum plot"></canvas></figure>
+      </div>
+      <div class="cards" id="mt"></div>
+      <div class="verdict" id="verdict" role="status"></div>
+    </div>
+  </div>
+</section>
+
+<section id="objective">
+  <h2>Objective</h2>
+  <p>A healthy machine vibrates mostly at its shaft frequency. Each type of fault leaves a different signature in the signal. We compare the time-domain measures and the Fourier spectrum with the healthy signal to decide whether the machine is normal or abnormal.</p>
+  <div class="flow" aria-label="Processing flow">
+    <span>Machine condition</span><i>&rarr;</i><span>Fault type</span><i>&rarr;</i><span>Vibration signal</span><i>&rarr;</i>
+    <span>Time domain: RMS, energy, power</span><i>+</i><span>FFT: frequency peaks</span><i>&rarr;</i><span>Normal / Abnormal</span>
+  </div>
+</section>
+
+<section id="method">
+  <h2>Method</h2>
+  <p>Every signal is sampled at 1024 Hz for 1 second (N = 1024 samples), so FFT bins fall on whole hertz. The shaft runs at 20 Hz (1X), and s is the severity (0.5 mild, 1 moderate, 1.5 severe).</p>
+  <div class="eq" id="mq"></div>
+  <div class="eq">Energy E = &Sigma; x[n]&sup2;<br>Average power P = (1/N) &Sigma; x[n]&sup2;<br>RMS = &radic;P</div>
+  <p>A signal is flagged <b>abnormal</b> when it has more than one significant spectral peak (above 0.1 amplitude) or its power is more than 1.2 times the healthy power.</p>
+</section>
+
+<section id="results">
+  <h2>Results</h2>
+  <p>All five conditions at the severity selected above, calculated by your browser.</p>
+  <div class="row">
+    <div class="tabs" role="group" aria-label="Parameter to compare">
+      <button data-g="m" data-v="e" aria-pressed="true">Energy</button>
+      <button data-g="m" data-v="p" aria-pressed="false">Power</button>
+      <button data-g="m" data-v="r" aria-pressed="false">RMS</button>
+    </div>
+    <div class="tabs" role="group" aria-label="Fault severity">
+      <span class="lbl">Fault severity:</span>
+      <button data-g="s" data-v="m" aria-pressed="false">Mild</button>
+      <button data-g="s" data-v="o" aria-pressed="true">Moderate</button>
+      <button data-g="s" data-v="s" aria-pressed="false">Severe</button>
+    </div>
+  </div>
+  <div class="chartwrap"><p class="hint" id="ctitle" style="margin:0 0 4px"></p><canvas id="ce" aria-label="Comparison bar chart of healthy and faulty machines"></canvas></div>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Condition</th><th>RMS</th><th>Energy</th><th>Energy and power vs healthy</th><th>Power</th><th>Peaks</th><th>Status</th></tr></thead>
+      <tbody id="tb"></tbody>
+    </table>
+  </div>
+</section>
+
+<section id="code">
+  <h2>Code</h2>
+  <p>The same analysis in Scilab.</p>
+  <a class="btn" href="vibration_fault_detection.sce" download>Download the Scilab script</a>
+</section>
+
+<footer>Signals and Systems mini project, 2026. Reference: B P Lathi, Linear Systems and Signals, Oxford University Press.</footer>
+</div>
+
+<script>
+(function(){
+var FS=1024,N=1024,FR=20,TW=2*Math.PI;
+function sn(f,t){return Math.sin(TW*f*t)}
+var HEALTHY={name:"Healthy machine",eq:"x(t) = sin(2&pi;&middot;20t)",f:function(t){return sn(FR,t)}};
+var FAULTS={
+ imb:{name:"Unbalance",sig:"Signature: the 1X peak (20 Hz, the shaft frequency) becomes much larger.",
+  eq:"x(t) = (1 + 1.2s)&middot;sin(2&pi;&middot;20t)",f:function(t,s){return(1+1.2*s)*sn(FR,t)}},
+ mis:{name:"Misalignment",sig:"Signature: raised peaks at 2X (40 Hz) and 3X (60 Hz).",
+  eq:"x(t) = sin(2&pi;&middot;20t) + 0.8s&middot;sin(2&pi;&middot;40t) + 0.4s&middot;sin(2&pi;&middot;60t)",
+  f:function(t,s){return sn(FR,t)+0.8*s*sn(2*FR,t)+0.4*s*sn(3*FR,t)}},
+ bea:{name:"Bearing defect",sig:"Signature: bursts repeating at the 70 Hz fault rate. The spectrum shows a 150 Hz resonance with sidebands at 80 and 220 Hz.",
+  eq:"x(t) = sin(2&pi;&middot;20t) + 1.2s&middot;0.5[1 + cos(2&pi;&middot;70t)]&middot;sin(2&pi;&middot;150t)",
+  f:function(t,s){return sn(FR,t)+1.2*s*0.5*(1+Math.cos(TW*70*t))*sn(150,t)}},
+ loo:{name:"Mechanical looseness",sig:"Signature: a sub-harmonic at 0.5X (10 Hz) and many harmonics (2X, 3X, 4X).",
+  eq:"x(t) = sin(2&pi;&middot;20t) + s[0.4 sin(2&pi;&middot;10t) + 0.6 sin(2&pi;&middot;40t) + 0.5 sin(2&pi;&middot;60t) + 0.4 sin(2&pi;&middot;80t)]",
+  f:function(t,s){return sn(FR,t)+s*(0.4*sn(FR/2,t)+0.6*sn(2*FR,t)+0.5*sn(3*FR,t)+0.4*sn(4*FR,t))}}
+};
+var ORDER=["imb","mis","bea","loo"],SV={m:0.5,o:1,s:1.5},SN={m:"mild",o:"moderate",s:"severe"};
+
+function gen(fn,s){var x=new Array(N),n;for(n=0;n<N;n++)x[n]=fn(n/FS,s);return x}
+function fft(x){var n=x.length,re=x.slice(),im=new Array(n).fill(0),i,j=0,k,m,t;
+  for(i=0;i<n-1;i++){if(i<j){t=re[i];re[i]=re[j];re[j]=t}k=n>>1;while(k<=j){j-=k;k>>=1}j+=k}
+  for(var len=2;len<=n;len<<=1){var a=-2*Math.PI/len,wr=Math.cos(a),wi=Math.sin(a);
+    for(i=0;i<n;i+=len){var cr=1,ci=0;
+      for(m=0;m<len/2;m++){var u=i+m,v=u+len/2,tr=re[v]*cr-im[v]*ci,ti=re[v]*ci+im[v]*cr;
+        re[v]=re[u]-tr;im[v]=im[u]-ti;re[u]+=tr;im[u]+=ti;t=cr*wr-ci*wi;ci=cr*wi+ci*wr;cr=t}}}
+  var mag=[];for(i=0;i<n/2;i++)mag.push(2*Math.hypot(re[i],im[i])/n);mag[0]/=2;return mag}
+function analyse(x){var mag=fft(x),E=0,i,peaks=[];
+  for(i=0;i<N;i++)E+=x[i]*x[i];
+  for(i=1;i<mag.length-1;i++){if(mag[i]>0.1&&mag[i]>=mag[i-1]&&mag[i]>=mag[i+1])peaks.push(i*FS/N)}
+  return{x:x,mag:mag,E:E,P:E/N,rms:Math.sqrt(E/N),peaks:peaks}}
+
+var H=analyse(gen(HEALTHY.f,1));
+function status(r){var why=[];
+  if(r.peaks.length>1)why.push("it has "+r.peaks.length+" significant spectral peaks");
+  if(r.P>1.2*H.P)why.push("its power is "+(r.P/H.P).toFixed(2)+" times the healthy power");
+  return{s:why.length?"ABNORMAL":"NORMAL",why:why}}
+
+var st={c:null,k:null,s:"o",m:"e"},sim=false,cur=null,raf;
+function sev(){return SV[st.s]}
+function ready(){return st.c=="h"||(st.c=="f"&&!!st.k)}
+function cls(s){return"<span class='"+(s=="NORMAL"?"ok":"bad")+"'>"+s+"</span>"}
+function pk(r){return r.peaks.length+" ("+r.peaks.join(", ")+" Hz)"}
+function el(id){return document.getElementById(id)}
+
+function table(){var rows="",i,all=[{n:HEALTHY.name,r:H}];
+  ORDER.forEach(function(k){all.push({n:FAULTS[k].name,r:analyse(gen(FAULTS[k].f,sev()))})});
+  all.forEach(function(o){rows+="<tr><td>"+o.n+"</td><td>"+o.r.rms.toFixed(3)+"</td><td>"+o.r.E.toFixed(1)+"</td><td>"+(o.r.E/H.E).toFixed(2)+"&times;</td><td>"+o.r.P.toFixed(3)+"</td><td>"+pk(o.r)+"</td><td>"+cls(status(o.r).s)+"</td></tr>"});
+  el("tb").innerHTML=rows;bars(all)}
+var MT={e:"Energy E = \u03A3x[n]\u00B2",p:"Average power P = E/N",r:"RMS = \u221AP"};
+function bars(all){var c=el("ce"),d=window.devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;if(!w)return;
+  var m=st.m,val=function(o){return m=="e"?o.r.E:m=="p"?o.r.P:o.r.rms},dp=m=="e"?1:3;
+  el("ctitle").textContent=MT[m]+" of each condition at "+SN[st.s]+" fault severity (red bars are faults)";
+  c.width=w*d;c.height=h*d;var g=c.getContext("2d");g.setTransform(d,0,0,d,0,0);g.clearRect(0,0,w,h);
+  var mx=0,L=52,B=44,T=20,pw=w-L-8,ph=h-T-B,i;all.forEach(function(o){mx=Math.max(mx,val(o))});mx*=1.12;
+  g.font="12px IBM Plex Sans,sans-serif";g.strokeStyle="#c9d6e2";g.fillStyle="#51607a";g.lineWidth=1;
+  for(i=0;i<=4;i++){var y=T+ph*i/4;g.beginPath();g.moveTo(L,y);g.lineTo(L+pw,y);g.stroke();g.textAlign="right";g.fillText((mx*(1-i/4)).toFixed(m=="e"?0:2),L-6,y+4)}
+  var bw=pw/all.length;g.textAlign="center";
+  all.forEach(function(o,j){var x=L+bw*j+bw*0.2,bh=ph*val(o)/mx;g.fillStyle=j?"#d1345b":"#1b998b";g.fillRect(x,T+ph-bh,bw*0.6,bh);
+    g.fillStyle="#14213d";g.fillText(val(o).toFixed(dp),x+bw*0.3,T+ph-bh-6);g.fillStyle="#51607a";
+    var nm=o.n.split(" ");g.fillText(nm[0],x+bw*0.3,T+ph+16);if(nm[1])g.fillText(nm[1],x+bw*0.3,T+ph+30)})}
+function mq(){var h="Healthy: "+HEALTHY.eq;ORDER.forEach(function(k){h+="<br>"+FAULTS[k].name+": "+FAULTS[k].eq});el("mq").innerHTML=h}
+
+function pr(id,on){el(id).setAttribute("aria-pressed",on)}
+function ui(){pr("bh",st.c=="h");pr("bf",st.c=="f");
+  ORDER.forEach(function(k){pr("k_"+k,st.k==k)});Array.prototype.forEach.call(document.querySelectorAll("[data-g=s],[data-g=m]"),function(b){b.setAttribute("aria-pressed",st[b.getAttribute("data-g")]==b.getAttribute("data-v"))});
+  el("fopt").hidden=st.c!="f";el("go").disabled=!ready();table()}
+
+var ct=el("ct"),cf=el("cf");
+function setup(c){var d=window.devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;
+  c.width=w*d;c.height=h*d;var g=c.getContext("2d");g.setTransform(d,0,0,d,0,0);return{g:g,w:w,h:h}}
+function frame(s,xl,ymax,xmax,dec){var g=s.g,L=40,R=12,T=12,B=34,pw=s.w-L-R,ph=s.h-T-B,i;
+  g.clearRect(0,0,s.w,s.h);g.font="12px IBM Plex Sans,sans-serif";g.fillStyle="#51607a";g.strokeStyle="#c9d6e2";g.lineWidth=1;
+  var ymin=dec?-ymax:0,yd=ymax-ymin;
+  for(i=0;i<=4;i++){var y=T+ph*i/4;g.beginPath();g.moveTo(L,y);g.lineTo(L+pw,y);g.stroke();
+    g.textAlign="right";g.fillText((ymax-yd*i/4).toFixed(0),L-6,y+4)}
+  g.textAlign="center";for(i=0;i<=5;i++){g.fillText((xmax*i/5).toFixed(xmax<1?2:0),L+pw*i/5,T+ph+16)}
+  g.fillText(xl,L+pw/2,s.h-4);
+  return{X:function(v){return L+pw*v/xmax},Y:function(v){return T+ph*(ymax-v)/yd}}}
+function draw(p){if(!cur)return;var r=cur,col=st.c=="h"?"#1b998b":"#d1345b",s,f,g,i,n=Math.floor(205*p);
+  s=setup(ct);f=frame(s,"Time (s)",4,0.2,true);g=s.g;g.strokeStyle=col;g.lineWidth=2;g.beginPath();
+  for(i=0;i<=n;i++){var px=f.X(i/FS),py=f.Y(r.x[i]);i?g.lineTo(px,py):g.moveTo(px,py)}g.stroke();
+  s=setup(cf);f=frame(s,"Frequency (Hz)",4,250,false);g=s.g;g.strokeStyle=col;g.lineWidth=3;
+  for(i=0;i<=250;i++){if(r.mag[i]>0.01){g.beginPath();g.moveTo(f.X(i),f.Y(0));g.lineTo(f.X(i),f.Y(r.mag[i]*p));g.stroke()}}
+  if(p>=1){g.fillStyle=col;g.textAlign="center";
+    r.peaks.forEach(function(q,j){g.fillText(q,f.X(q),f.Y(r.mag[q])-6-(j%2)*13)})}}
+function card(t,v,sub){return"<div class='card'><small>"+t+"</small><b>"+v+"</b><small>"+sub+"</small></div>"}
+
+function run(){var ok=st.c=="h",fa=ok?HEALTHY:FAULTS[st.k],r=analyse(gen(fa.f,sev())),sv=status(r);
+  cur=r;el("out").hidden=false;
+  el("head").textContent=ok?"Healthy machine":"Faulty machine: "+fa.name+" ("+SN[st.s]+")";
+  el("sig").textContent=ok?"Only the shaft frequency (1X = 20 Hz) is present.":fa.sig;
+  el("eq").innerHTML=fa.eq+(ok?"":"&nbsp;&nbsp;(s = "+sev()+")");
+  function sub(v){return ok?"Reference value":"Healthy: "+v}
+  el("mt").innerHTML=card("RMS = &radic;P",r.rms.toFixed(3),sub(H.rms.toFixed(3)))+
+    card("Energy E = &Sigma;x&sup2;",r.E.toFixed(1),sub(H.E.toFixed(1)))+
+    card("Average power P",r.P.toFixed(3),sub(H.P.toFixed(3)))+
+    card("Significant peaks",r.peaks.length,r.peaks.join(", ")+" Hz");
+  var v=el("verdict");v.className="verdict"+(sv.s=="ABNORMAL"?" bad":"");
+  v.textContent="Status: "+sv.s+(sv.why.length?" because "+sv.why.join(" and ")+".":". Only the shaft frequency is present and the power is the reference value.");
+  cancelAnimationFrame(raf);
+  var dur=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches?0:1100,t0=null;
+  function step(ts){if(t0===null)t0=ts;var p=dur?Math.min(1,(ts-t0)/dur):1;draw(p);if(p<1)raf=requestAnimationFrame(step)}
+  raf=requestAnimationFrame(step)}
+
+Array.prototype.forEach.call(document.querySelectorAll("[data-g]"),function(b){
+  b.onclick=function(){st[b.getAttribute("data-g")]=b.getAttribute("data-v");ui();if(sim&&ready())run()}});
+el("go").onclick=function(){sim=true;el("pr").hidden=true;run();el("out").scrollIntoView({behavior:"smooth",block:"nearest"})};
+window.addEventListener("resize",function(){draw(1);table()});
+mq();ui();
+})();
+</script>
+</body>
+</html>
